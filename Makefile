@@ -22,10 +22,10 @@ media:
 
 image: media build
 	@echo Building Shipyard image $(TAG)
-	@cd controller && docker build -t shipyard/shipyard:$(TAG) .
+	@cd controller && docker build -t thekrushka/shipyard .
 
 release: build image
-	@docker push shipyard/shipyard:$(TAG)
+	@docker push thekrushka/shipyard
 
 test: clean 
 	@godep go test -v ./...

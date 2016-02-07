@@ -32,30 +32,70 @@ func (a *Api) hubWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Infof("received webhook notification for %s", webhook.Repository.RepoName)
 
-	// thekrushka code :
-	var timout_const = 5000
-	containers, _ := a.manager.DockerClient().ListContainers(true, false, "")
+	// @thekrushka code :
+	var timout_const = 1
+	containers, err := a.manager.DockerClient().ListContainers(true, false, "")
+
+	if err != nil {
+		log.Errorf("error during getting a list of Containers: error=%s", err)
+		return
+	}
+
 	for _, container := range containers {
-		if strings.Index(container.Image, key.Image) == -1 {
-			log.Infof("stopping the container: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
-			if err := a.manager.DockerClient().StopContainer(container.Id, timout_const); err != nil {
-				log.Errorf("error during stopping Container : id=%s error=%s", container.Id, err)
+		if strings.Index(container.Image, key.Image) != -1 {
+
+			//log.Infof("inspecting the container: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
+			containerInfo, err := a.manager.DockerClient().InspectContainer(container.Id)
+			if err != nil {
+				log.Errorf("error during inspection of the Container : id=%s error=%s", container.Id, err)
 				return
 			}
 
-			log.Infof("removing the container: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
+			if containerInfo.Config == nil || containerInfo.HostConfig == nil {
+				log.Errorf("error containerInfo Config or HostConfig was nil : Config=%s HostConfig=%s", containerInfo.Config, containerInfo.HostConfig)
+				return
+			}
+
+			if containerInfo.State.Paused {
+				//log.Infof("unpausing the container: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
+				if err := a.manager.DockerClient().UnpauseContainer(container.Id); err != nil {
+					log.Errorf("error during unpausing Container : id=%s error=%s", container.Id, err)
+					return
+				}
+			}
+
+			if containerInfo.State.Running {
+				//log.Infof("stopping the container: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
+				if err := a.manager.DockerClient().StopContainer(container.Id, timout_const); err != nil {
+					log.Errorf("error during stopping Container : id=%s error=%s", container.Id, err)
+					return
+				}
+			}
+
+			//log.Infof("removing the container: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
 			if err := a.manager.DockerClient().RemoveContainer(container.Id, true, false); err != nil {
 				log.Errorf("error during stopping Container : id=%s error=%s", container.Id, err)
 				return
 			}
 
-			log.Infof("pulling the image: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
+			//log.Infof("pulling the image: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
 			if err := a.manager.DockerClient().PullImage(container.Image, nil); err != nil {
+				log.Errorf("error during pulling Image : name=%s error=%s", container.Image, err)
+				return
+			}
+
+			//log.Infof("creating container based on the previous settings: %s based on the Webhook request from : %s", containerInfo.Name, r.RemoteAddr)
+			newContainerId, err := a.manager.DockerClient().CreateContainer(containerInfo.Config, containerInfo.Name)
+			if err != nil {
+				log.Errorf("error during pulling Image : name=%s error=%s", container.Image, err)
+				return
+			}
+
+			log.Infof("starting the container: %s based on the Webhook request from : %s", container.Image, r.RemoteAddr)
+			if err := a.manager.DockerClient().StartContainer(newContainerId, containerInfo.HostConfig); err != nil {
 				log.Errorf("error during pulling Image : name=%s error=%s", container.Image, err)
 				return
 			}
 		}
 	}
-
-	// TODO @ehazlett - redeploy containers
 }
