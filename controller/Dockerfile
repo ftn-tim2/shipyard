@@ -4,4 +4,4 @@ RUN apk add --update git ca-certificates && \
 ADD static /static
 ADD . /bin/controller
 EXPOSE 8080
-ENTRYPOINT ["/bin/controller"]
+#ENTRYPOINT ["/bin/controller"]
