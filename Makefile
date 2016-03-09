@@ -10,7 +10,7 @@ clean:
 	@rm -rf controller/controller
 
 build:
-	@cd controller && godep go build -a -tags "netgo static_build" -installsuffix netgo -ldflags "-w -X github.com/shipyard/shipyard/version.GitCommit=$(COMMIT)" .
+	@cd controller && godep go build -a -tags "netgo static_build" -installsuffix netgo -ldflags "-w -X github.com/tim2/shipyard/version.GitCommit=$(COMMIT)" .
 
 remote-build:
 	@docker build -t shipyard-build -f Dockerfile.build .
