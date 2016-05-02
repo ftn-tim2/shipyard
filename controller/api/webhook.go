@@ -85,7 +85,7 @@ func (a *Api) hubWebhook(w http.ResponseWriter, r *http.Request) {
 			}
 
 			//log.Infof("creating container based on the previous settings: %s based on the Webhook request from : %s", containerInfo.Name, r.RemoteAddr)
-			newContainerId, err := a.manager.DockerClient().CreateContainer(containerInfo.Config, containerInfo.Name)
+			newContainerId, err := a.manager.DockerClient().CreateContainer(containerInfo.Config, containerInfo.Name, nil)
 			if err != nil {
 				log.Errorf("error during pulling Image : name=%s error=%s", container.Image, err)
 				return
